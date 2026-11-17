@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+ content="width=device-width,initial-scale=1">
+<title>JARVIS - Test Voce</title>
+<style>
+body {
+  background:#050d19;
+  color:#6deaff;
+  font-family:Arial,sans-serif;
+  text-align:center;
+  padding:40px 15px;
+}
+button,select {
+  padding:15px;
+  margin:12px 0;
+  border:1px solid #00d9ff;
+  border-radius:12px;
+  font-size:17px;
+}
+button {
+  background:#07365a;
+  color:white;
+}
+select { max-width:100%; }
+</style>
+</head>
+<body>
+<h1>J.A.R.V.I.S.</h1>
+<p>TEST VOCE ITALIANA</p>
+<select id="voices"></select>
+<br>
+<button onclick="parla()">🔊 TEST VOCE</button>
+<p id="status">Pronto per il test.</p>
+
+<script>
+const select = document.getElementById("voices");
+const status = document.getElementById("status");
+let italiane = [];
+
+function caricaVoci() {
+  italiane = speechSynthesis.getVoices()
+    .filter(v => v.lang.toLowerCase().startsWith("it"));
+
+  select.innerHTML = "";
+
+  italiane.forEach((v, i) => {
+    const option = document.createElement("option");
+    option.value = i;
+    option.textContent = v.name + " (" + v.lang + ")";
+    select.appendChild(option);
+  });
+
+  status.textContent = italiane.length
+    ? "Trovate " + italiane.length + " voci italiane."
+    : "Nessuna voce italiana elencata.";
+}
+
+function parla() {
+  if (!("speechSynthesis" in window)) {
+    status.textContent = "Sintesi vocale non supportata.";
+    return;
+  }
+
+  speechSynthesis.cancel();
+
+  const frase = new SpeechSynthesisUtterance(
+    "Buonasera, signore. Sono JARVIS. " +
+    "Tutti i sistemi sono operativi. " +
+    "Come posso esserle utile?"
+  );
+
+  frase.lang = "it-IT";
+  frase.rate = 0.88;
+  frase.pitch = 0.85;
+  frase.volume = 1;
+
+  if (italiane.length) {
+    frase.voice = italiane[Number(select.value) || 0];
+  }
+
+  frase.onstart = () => {
+    status.textContent = "JARVIS sta parlando...";
+  };
+
+  frase.onend = () => {
+    status.textContent = "Test completato.";
+  };
+
+  frase.onerror = e => {
+    status.textContent = "Errore audio: " + e.error;
+  };
+
+  speechSynthesis.speak(frase);
+}
+
+if ("speechSynthesis" in window) {
+  caricaVoci();
+  speechSynthesis.onvoiceschanged = caricaVoci;
+} else {
+  status.textContent = "Browser non compatibile.";
+}
+</script>
+</body>
+</html>
