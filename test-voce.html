@@ -1,108 +1,57 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport"
- content="width=device-width,initial-scale=1">
-<title>JARVIS - Test Voce</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JARVIS — Diagnostica voce gratuita</title>
 <style>
-body {
-  background:#050d19;
-  color:#6deaff;
-  font-family:Arial,sans-serif;
-  text-align:center;
-  padding:40px 15px;
-}
-button,select {
-  padding:15px;
-  margin:12px 0;
-  border:1px solid #00d9ff;
-  border-radius:12px;
-  font-size:17px;
-}
-button {
-  background:#07365a;
-  color:white;
-}
-select { max-width:100%; }
+body{font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;background:#071421;color:#e4f9ff;max-width:600px;margin:0 auto;padding:30px 18px}h1{color:#54e2ff}button{display:block;width:100%;padding:16px;margin:14px 0;background:#08688d;border:1px solid #54e2ff;border-radius:12px;color:white;font-size:18px}button:active{background:#03475e}#log{white-space:pre-wrap;overflow-wrap:anywhere;background:#0d2937;border:1px solid #246079;padding:15px;border-radius:10px;min-height:120px}p{line-height:1.5}
 </style>
 </head>
 <body>
 <h1>J.A.R.V.I.S.</h1>
-<p>TEST VOCE ITALIANA</p>
-<select id="voices"></select>
-<br>
-<button onclick="parla()">🔊 TEST VOCE</button>
-<p id="status">Pronto per il test.</p>
-
+<p>Diagnostica gratuita della voce su Safari iPhone. Tocca un pulsante per volta e alza il volume mentre la pagina prova a parlare.</p>
+<button id="default">1 — Prova voce predefinita</button>
+<button id="italian">2 — Prova voce italiana</button>
+<button id="resume">3 — Riprendi voce sospesa</button>
+<button id="stop">Ferma voce</button>
+<p id="log" aria-live="polite">Pronto.</p>
 <script>
-const select = document.getElementById("voices");
-const status = document.getElementById("status");
-let italiane = [];
-
-function caricaVoci() {
-  italiane = speechSynthesis.getVoices()
-    .filter(v => v.lang.toLowerCase().startsWith("it"));
-
-  select.innerHTML = "";
-
-  italiane.forEach((v, i) => {
-    const option = document.createElement("option");
-    option.value = i;
-    option.textContent = v.name + " (" + v.lang + ")";
-    select.appendChild(option);
-  });
-
-  status.textContent = italiane.length
-    ? "Trovate " + italiane.length + " voci italiane."
-    : "Nessuna voce italiana elencata.";
-}
-
-function parla() {
-  if (!("speechSynthesis" in window)) {
-    status.textContent = "Sintesi vocale non supportata.";
-    return;
-  }
-
-  speechSynthesis.cancel();
-
-  const frase = new SpeechSynthesisUtterance(
-    "Buonasera, signore. Sono JARVIS. " +
-    "Tutti i sistemi sono operativi. " +
-    "Come posso esserle utile?"
-  );
-
-  frase.lang = "it-IT";
-  frase.rate = 0.88;
-  frase.pitch = 0.85;
-  frase.volume = 1;
-
-  if (italiane.length) {
-    frase.voice = italiane[Number(select.value) || 0];
-  }
-
-  frase.onstart = () => {
-    status.textContent = "JARVIS sta parlando...";
-  };
-
-  frase.onend = () => {
-    status.textContent = "Test completato.";
-  };
-
-  frase.onerror = e => {
-    status.textContent = "Errore audio: " + e.error;
-  };
-
-  speechSynthesis.speak(frase);
-}
-
-if ("speechSynthesis" in window) {
-  caricaVoci();
-  speechSynthesis.onvoiceschanged = caricaVoci;
-} else {
-  status.textContent = "Browser non compatibile.";
-}
+(() => {
+ const logEl=document.getElementById('log');
+ const synth=window.speechSynthesis;
+ let utterance=null;
+ const log=s=>{logEl.textContent += '\n'+s;};
+ if(!synth || !window.SpeechSynthesisUtterance){logEl.textContent='Sintesi vocale non supportata.';return;}
+ const describe=()=>`Stato: speaking=${synth.speaking}, pending=${synth.pending}, paused=${synth.paused}`;
+ const speak=(forceItalian)=>{
+   synth.cancel();
+   logEl.textContent='Avvio test...';
+   utterance=new SpeechSynthesisUtterance('Buongiorno. Sono Jarvis. Questo è un test della voce.');
+   utterance.lang='it-IT';
+   utterance.rate=1;
+   utterance.pitch=1;
+   utterance.volume=1;
+   if(forceItalian){
+     const voices=synth.getVoices();
+     const voice=voices.find(v=>v.lang.toLowerCase()==='it-it') || voices.find(v=>v.lang.toLowerCase().startsWith('it'));
+     if(voice){utterance.voice=voice;log('Voce scelta: '+voice.name+' ('+voice.lang+')');}
+     else log('Nessuna voce italiana disponibile: uso la predefinita.');
+   }else log('Nessuna voce specifica impostata.');
+   utterance.onstart=()=>log('Evento: inizio. '+describe());
+   utterance.onend=()=>log('Evento: fine. '+describe());
+   utterance.onerror=e=>log('Evento: errore '+e.error+'. '+describe());
+   utterance.onpause=()=>log('Evento: pausa. '+describe());
+   utterance.onresume=()=>log('Evento: ripresa. '+describe());
+   synth.speak(utterance);
+   log('Comando speak() inviato. '+describe());
+ };
+ document.getElementById('default').addEventListener('click',()=>speak(false));
+ document.getElementById('italian').addEventListener('click',()=>speak(true));
+ document.getElementById('resume').addEventListener('click',()=>{synth.resume();log('Comando resume(). '+describe());});
+ document.getElementById('stop').addEventListener('click',()=>{synth.cancel();log('Comando cancel(). '+describe());});
+ logEl.textContent='Voci disponibili: '+synth.getVoices().filter(v=>v.lang.toLowerCase().startsWith('it')).length+' italiane.\n'+describe();
+})();
 </script>
 </body>
 </html>
